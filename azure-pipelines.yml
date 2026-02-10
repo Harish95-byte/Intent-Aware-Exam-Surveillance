@@ -1,0 +1,11 @@
+trigger:
+- main
+
+pool:
+  name: Default
+
+steps:
+- script: |
+    echo "Running Python application"
+    python app.py
+  displayName: 'Run app.py'
