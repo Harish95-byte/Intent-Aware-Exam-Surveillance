@@ -7,6 +7,6 @@ pool:
 steps:
 - script: |
     echo "Running Python application"
-    python README.md
+    python main.py
 
-  displayName: 'Run README.md'
+  displayName: 'Run main.py'
