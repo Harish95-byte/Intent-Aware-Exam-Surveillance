@@ -7,5 +7,6 @@ pool:
 steps:
 - script: |
     echo "Running Python application"
-    python app.py
+    python main.py
+
   displayName: 'Run app.py'
