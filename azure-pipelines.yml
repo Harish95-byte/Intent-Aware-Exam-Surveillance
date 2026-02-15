@@ -16,7 +16,7 @@ steps:
 
 - script: |
     echo Running Application...
-    python app.py
+    python main.py
   displayName: "Run Application"
 
 - script: |
