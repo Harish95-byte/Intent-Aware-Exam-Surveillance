@@ -2,27 +2,23 @@ trigger:
 - main
 
 pool:
-  name: Default   # Your self-hosted agent
+  name: Default
 
 steps:
 
 - checkout: self
 
 - script: |
-    echo "Upgrading pip..."
-    python -m pip install --upgrade pip
-  displayName: "Upgrade pip"
+    echo Checking Python version...
+    where python
+    python --version
+  displayName: "Check Python"
 
 - script: |
-    echo "Installing dependencies..."
-    if exist requirements.txt pip install -r requirements.txt
-  displayName: "Install Dependencies"
-
-- script: |
-    echo "Running Python Application..."
-    python main.py
+    echo Running Application...
+    python app.py
   displayName: "Run Application"
 
 - script: |
-    echo "CI Pipeline Completed Successfully"
+    echo CI Pipeline Completed Successfully
   displayName: "Completion Message"
