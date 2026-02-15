@@ -2,23 +2,27 @@ trigger:
 - main
 
 pool:
-  name: 'Default'
+  name: Default   # Your self-hosted agent
 
 steps:
 
-# Step 1: Install Python 3.10
-- task: UsePythonVersion@0
-  inputs:
-    versionSpec: '3.10'
-  displayName: 'Use Python 3.10'
+- checkout: self
 
-# Step 2: Upgrade pip and install dependencies
 - script: |
+    echo "Upgrading pip..."
     python -m pip install --upgrade pip
-    pip install -r requirements.txt
-  displayName: 'Install Dependencies'
+  displayName: "Upgrade pip"
 
-# Step 3: Run your main file
 - script: |
+    echo "Installing dependencies..."
+    if exist requirements.txt pip install -r requirements.txt
+  displayName: "Install Dependencies"
+
+- script: |
+    echo "Running Python Application..."
     python main.py
-  displayName: 'Run main.py'
+  displayName: "Run Application"
+
+- script: |
+    echo "CI Pipeline Completed Successfully"
+  displayName: "Completion Message"
