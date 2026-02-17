@@ -3,130 +3,119 @@ Using Behavioral Pattern Deviation & Machine Learning
 
 [AI Exam project.pdf](https://github.com/user-attachments/files/25357141/AI.Exam.project.pdf)
 
-📖 Project Overview
+1️⃣ Introduction
 
-The Intent-Aware AI-Based Examination Surveillance System is a real-time intelligent proctoring solution designed to detect suspicious behavior during online examinations.
+The Intent-Aware AI-Based Examination Surveillance System is an AI-driven online proctoring solution designed to detect suspicious student behavior during examinations.
 
-Unlike traditional monitoring systems, this project focuses on:
+The system analyzes behavioral patterns and predicts the probability of cheating using machine learning techniques instead of simple rule-based detection.
 
-Behavioral pattern learning
+2️⃣ Project Objective
 
-Deviation detection
+Monitor students in real-time using webcam input
 
-Probability-based cheating intention scoring
+Analyze facial presence, eye movement, and head orientation
 
-Real-time alert generation
+Learn individual baseline behavior
 
-The system uses Logistic Regression to compute a Cheating Intention Score between 0 and 1.
+Detect deviations from normal behavior
 
-🏗️ System Architecture
+Compute a probability-based cheating intention score
 
-The system follows a modular, AI-driven layered architecture:
+Generate alerts for examiners when necessary
 
-🔹 1. Input Layer
+3️⃣ Project Scope
+What We Are Going To Do
 
-Webcam / Live Camera Feed
+Monitor students during online examinations using webcam
 
-Student Authentication Data
+Track face detection, eye movement, and head movement
 
-🔹 2. Processing Layer
+Learn normal behavior during the initial phase
 
-Video Capture Module
+Detect deviations from baseline behavior
 
-Face Detection & Tracking Module
+Calculate cheating probability using Machine Learning
 
-Eye & Head Movement Tracking Module
+Generate warnings or alerts for examiners
 
-🔹 3. Intelligence Layer
+4️⃣ Implementation Approach
+How We Are Going To Do It
 
-Baseline Behavior Learning Module
+Capture live video using webcam
 
-Behavior Deviation Analysis Module
+Detect and track facial features
 
-Intention Scoring Engine (ML Model)
+Extract behavioral features (gaze direction, movement frequency, stability)
 
-🔹 4. Application Layer
+Create a personalized baseline behavior profile
 
-Alert & Logging Module
+Compare real-time data with baseline behavior
 
-Examiner Dashboard
+Feed deviation metrics into the Machine Learning model
 
-🔹 5. Storage Layer
+Generate risk level based on predicted probability
 
-Behavior Data Repository
+5️⃣ Machine Learning Model
+Model Used: Logistic Regression
 
-Event Logs & Reports
-
-🤖 Machine Learning Model
-🔹 Model Used: Logistic Regression
-
-Logistic Regression is selected because:
-
-✔ Outputs probabilities (ideal for intention scoring)
-
-✔ Computationally efficient for real-time systems
-
-✔ Easy to interpret and justify academically
-
-✔ Works well with structured numerical features
-
-✔ Suitable for small to medium datasets
-
-📊 Cheating Intention Formula
+The system uses Logistic Regression to compute the cheating probability score.
 
 P(cheating) = 1 / (1 + e^-(wX + b))
 
+
 Where:
-- X = Feature vector  
-- w = Model weights  
-- b = Bias  
 
-🔄 System Workflow
-Step 1: Student Authentication
+X = Feature vector
 
-Student logs into the system
+w = Model weights
 
-Identity verification performed
+b = Bias
 
-Step 2: Baseline Behavior Learning
+Model Justification
 
-System observes normal behavior
+Produces probability output
 
-No alerts generated
+Computationally efficient
 
-Personalized baseline profile created
+Suitable for real-time applications
 
-Step 3: Continuous Monitoring
+Easy to interpret and explain academically
 
-Live webcam feed captured
+6️⃣ Technologies Used
 
-Face & eye tracking performed
+Python
 
-Step 4: Feature Extraction
+OpenCV
 
-Behavior converted into numerical values:
+Scikit-learn
 
-Eye gaze variance
+FastAPI / Flask
 
-Head movement frequency
+HTML, CSS, JavaScript
 
-Face stability score
+MySQL / PostgreSQL
 
-Deviation duration
+7️⃣ System Workflow
 
-Deviation count
+Student Authentication
 
-Step 5: Deviation Analysis
+Baseline Behavior Learning
 
-Live behavior compared with baseline
+Continuous Video Monitoring
 
-Anomalies detected
+Face & Eye Tracking
 
-Step 6: Intention Scoring
+Feature Extraction
 
-Logistic Regression computes cheating probability
-​
-Step 7: Decision Engine
+Behavior Deviation Analysis
+
+Logistic Regression Prediction
+
+Risk Level Classification
+
+Alert & Logging
+
+*Risk Level Classification
 
 | Score Range | Risk Level | Action  |
 |------------|------------|---------|
@@ -134,28 +123,7 @@ Step 7: Decision Engine
 | 0.3 – 0.7  | Medium     | Warning |
 | 0.7 – 1.0  | High       | Alert   |
 
-Step 8: Alert & Logging
-
-Suspicious events recorded securely
-
-Evidence preserved
-
-Alerts shown to examiner
-
-Step 9: Report Generation
-
-Post-exam analysis report created
-
-Student → System : Login  
-System → Camera : Start Capture  
-Camera → Tracking Module : Send Frames  
-Tracking Module → ML Model : Send Features  
-ML Model → Decision Engine : Intention Score  
-Decision Engine → System : Risk Level  
-System → Examiner : Alert (if high)  
-System → Database : Store Logs  
-
-🚀 Key Features
+8️⃣ Key Features
 
 Real-time behavioral monitoring
 
@@ -165,46 +133,6 @@ Probability-based cheating detection
 
 Multi-level risk classification
 
-Alert & evidence logging
+Secure alert and logging mechanism
 
-Examiner dashboard interface
-
-Post-exam reporting system
-
-🛠️ Technologies (Proposed Implementation)
-
-Python
-
-OpenCV
-
-Machine Learning (Scikit-learn)
-
-FastAPI / Flask
-
-HTML, CSS, JavaScript
-
-Database (MySQL / PostgreSQL)
-
-🎯 Research Contribution
-
-This system introduces an intent-based probabilistic model instead of binary cheating detection, enabling:
-
-Reduced false positives
-
-Personalized monitoring
-
-Scalable real-time surveillance
-
-Explainable AI decision-making
-
-📌 Future Enhancements
-
-Deep Learning-based intention prediction
-
-Multi-camera support
-
-Emotion detection integration
-
-Adaptive model retraining
-
-Cloud-based deployment
+Examiner dashboard integration
