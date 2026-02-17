@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Exam Surveillance Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body class="bg-gradient-to-br from-slate-900 to-slate-800 text-white min-h-screen">
+
+<!-- HEADER -->
+<div class="bg-slate-900/70 backdrop-blur-md p-4 flex justify-between items-center shadow-lg border-b border-slate-700">
+    <div>
+        <h1 class="text-2xl font-bold text-blue-400 tracking-wide">
+            AI Examination Surveillance System
+        </h1>
+        <p class="text-sm text-slate-400">
+            Real-Time Behavioral Monitoring Dashboard
+        </p>
+    </div>
+
+    <div class="flex items-center gap-6">
+        <div class="text-right">
+            <p class="text-sm text-slate-400">Current Time</p>
+            <p id="clock" class="font-semibold text-lg"></p>
+        </div>
+
+        <button class="bg-red-500 hover:bg-red-600 transition px-5 py-2 rounded-lg shadow-md">
+            Logout
+        </button>
+    </div>
+</div>
+
+<!-- FULL WIDTH LIVE VIDEO -->
+<div class="p-8">
+    <div class="bg-slate-800/60 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-slate-700">
+
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-blue-400 font-semibold text-xl">
+                Live Video Stream
+            </h2>
+
+            <span id="videoStatus"
+                class="bg-gray-500/20 text-gray-400 px-4 py-1 text-sm rounded-full">
+                DISCONNECTED
+            </span>
+        </div>
+
+        <div class="bg-black h-[500px] rounded-xl flex items-center justify-center text-slate-500 text-lg">
+            No Camera Connected
+        </div>
+
+    </div>
+</div>
+
+<!-- BEHAVIORAL ANALYTICS -->
+<div class="px-8 pb-8">
+    <div class="bg-slate-800/60 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-slate-700">
+
+        <h2 class="text-blue-400 font-semibold text-xl mb-6">
+            Behavioral Analytics Panel
+        </h2>
+
+        <div class="grid grid-cols-2 gap-6">
+            <div class="bg-slate-700/60 rounded-xl p-4">
+                <canvas id="eyeChart"></canvas>
+            </div>
+            <div class="bg-slate-700/60 rounded-xl p-4">
+                <canvas id="headChart"></canvas>
+            </div>
+            <div class="bg-slate-700/60 rounded-xl p-4">
+                <canvas id="deviationChart"></canvas>
+            </div>
+            <div class="bg-slate-700/60 rounded-xl p-4">
+                <canvas id="temporalChart"></canvas>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- ALERTS -->
+<div class="px-8 pb-8">
+    <div class="bg-slate-800/60 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-slate-700">
+
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-red-400 font-semibold text-lg">
+                Alerts & Events Panel
+            </h2>
+
+            <span id="monitorStatus"
+                class="bg-gray-500/20 text-gray-400 px-3 py-1 text-xs rounded-full">
+                WAITING FOR DATA
+            </span>
+        </div>
+
+        <table class="w-full text-left">
+            <thead>
+                <tr class="border-b border-slate-600 text-slate-400 text-sm">
+                    <th class="p-3">Time</th>
+                    <th class="p-3">Event</th>
+                    <th class="p-3">Risk Level</th>
+                </tr>
+            </thead>
+            <tbody id="alertsBody">
+                <tr>
+                    <td class="p-3">--</td>
+                    <td class="p-3">Monitoring Not Started</td>
+                    <td class="p-3 text-gray-400">No Data</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- STUDENT INFO -->
+<div class="px-8 pb-10">
+    <div class="bg-slate-800/60 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-slate-700">
+
+        <h2 class="text-green-400 font-semibold text-lg mb-6">
+            Student Information
+        </h2>
+
+        <div class="grid grid-cols-3 gap-6 text-slate-300">
+            <div>
+                <p class="text-slate-400 text-sm">Student Name</p>
+                <p id="studentName" class="font-semibold">---</p>
+            </div>
+            <div>
+                <p class="text-slate-400 text-sm">Roll Number</p>
+                <p id="studentRoll" class="font-semibold">---</p>
+            </div>
+            <div>
+                <p class="text-slate-400 text-sm">Exam Name</p>
+                <p id="examName" class="font-semibold">---</p>
+            </div>
+            <div>
+                <p class="text-slate-400 text-sm">Session Duration</p>
+                <p id="examDuration" class="font-semibold">---</p>
+            </div>
+            <div>
+                <p class="text-slate-400 text-sm">Current Status</p>
+                <p id="studentStatus" class="font-semibold text-gray-400">
+                    Not Connected
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+
+// CLOCK
+setInterval(() => {
+    document.getElementById("clock").innerText =
+        new Date().toLocaleTimeString();
+}, 1000);
+
+// CREATE CHARTS
+function createChart(id, label) {
+    return new Chart(document.getElementById(id), {
+        type: 'line',
+        data: { labels: [], datasets: [{
+            label: label,
+            data: [],
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59,130,246,0.1)',
+            tension: 0.4
+        }]},
+        options: {
+            responsive: true,
+            plugins: { legend: { labels: { color: "white" } }},
+            scales: {
+                x: { ticks: { color: "gray" }},
+                y: { ticks: { color: "gray" }}
+            }
+        }
+    });
+}
+
+const eyeChart = createChart("eyeChart", "Eye Movement Variance");
+const headChart = createChart("headChart", "Head Tilt Angle");
+const deviationChart = createChart("deviationChart", "Deviation Score");
+const temporalChart = createChart("temporalChart", "Temporal Risk Score");
+
+function updateChart(chart, value) {
+    chart.data.labels.push("");
+    chart.data.datasets[0].data.push(value);
+    if (chart.data.labels.length > 20) {
+        chart.data.labels.shift();
+        chart.data.datasets[0].data.shift();
+    }
+    chart.update();
+}
+
+// DO NOT CALL connectWebSocket() UNTIL BACKEND IS READY
+
+</script>
+
+</body>
+</html>
