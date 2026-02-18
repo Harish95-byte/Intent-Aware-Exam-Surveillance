@@ -1,87 +1,209 @@
 📌 Intent-Aware AI-Based Examination Surveillance System
 Using Behavioral Pattern Deviation & Machine Learning
 
-[AI Exam project.pdf](https://github.com/user-attachments/files/25357141/AI.Exam.project.pdf)
+A Multi-Modal Behavioral Deviation Fusion Framework for Probabilistic Cheating Intention Inference
+1️⃣ Technical Field of Invention
 
-1️⃣ Introduction
+The present invention relates to:
 
-The Intent-Aware AI-Based Examination Surveillance System is an AI-driven online proctoring solution designed to detect suspicious student behavior during examinations.
+Artificial Intelligence-based surveillance systems
 
-The system analyzes behavioral patterns and predicts the probability of cheating using machine learning techniques instead of simple rule-based detection.
+Real-time behavioral analytics
 
-2️⃣ Project Objective
+Probabilistic intent inference
 
-Monitor students in real-time using webcam input
+Examination integrity monitoring
 
-Analyze facial presence, eye movement, and head orientation
+Specifically, this system introduces a multi-layer behavioral deviation fusion engine to estimate cheating intention probability in examination environments.
 
-Learn individual baseline behavior
+2️⃣ Problem Statement
 
-Detect deviations from normal behavior
+Existing online proctoring systems:
 
-Compute a probability-based cheating intention score
+Use simple rule-based triggers
 
-Generate alerts for examiners when necessary
+Depend on fixed thresholds
 
-3️⃣ Project Scope
-What We Are Going To Do
+Lack personalized behavioral baselines
 
-Monitor students during online examinations using webcam
+Do not model temporal behavioral deviation
 
-Track face detection, eye movement, and head movement
+Cannot probabilistically infer intention
 
-Learn normal behavior during the initial phase
+There is a need for a system that:
 
-Detect deviations from baseline behavior
+Learns normal behavior per candidate
 
-Calculate cheating probability using Machine Learning
+Detects deviations across multiple modalities
 
-Generate warnings or alerts for examiners
+Models behavior over time
 
-4️⃣ Implementation Approach
-How We Are Going To Do It
+Produces a probabilistic cheating intent score
 
-Capture live video using webcam
+3️⃣ Summary of the Invention
 
-Detect and track facial features
+The proposed system introduces:
 
-Extract behavioral features (gaze direction, movement frequency, stability)
+A Multi-Modal Behavioral Deviation Fusion Framework
+with Temporal Modeling and Probabilistic Intent Scoring.
 
-Create a personalized baseline behavior profile
+The invention integrates:
 
-Compare real-time data with baseline behavior
+Facial presence stability
 
-Feed deviation metrics into the Machine Learning model
+Eye gaze direction patterns
 
-Generate risk level based on predicted probability
+Head orientation dynamics
 
-5️⃣ Machine Learning Model
-Model Used: Logistic Regression
+Behavioral baseline learning
 
-The system uses Logistic Regression to compute the cheating probability score.
+Temporal deviation modeling
 
-P(cheating) = 1 / (1 + e^-(wX + b))
+Bayesian probabilistic inference
+
+to compute : p(cheating | Behavioral Features)
+System Architecture
+Core Modules
+
+1️⃣ Face Detection Module
+
+Detects candidate presence in real-time
+
+2️⃣ Face Tracking Module
+
+Maintains persistent identity across frames
+
+3️⃣ Eye Landmark & Head Pose Module
+
+Extracts gaze direction and orientation angles
+
+4️⃣ Behavioral Feature Extraction Module
+
+Computes movement frequency
+
+Gaze deviation duration
+
+Pose variance
+
+Face stability metrics
+
+5️⃣ Baseline Behavior Learning Module
+
+Learns normal behavioral profile
+
+Personalized per candidate
+
+6️⃣ Deviation Detection Module
+
+Measures statistical distance from baseline
+
+7️⃣ Temporal Behavior Modeling Module
+
+Models sequential behavior patterns over time
+
+8️⃣ Bayesian Intent Scoring Engine ⭐ (Core Innovation)
+
+Fuses multi-modal deviations
+
+Computes probabilistic cheating intention
+
+9️⃣ Adaptive Decision Threshold Module
+
+Converts probability into actionable risk levels
+
+🔟 Alert & Logging Module
+
+Stores behavioral evidence
+
+Generates examiner reports
+
+System Architecture
+Core Modules
+
+1️⃣ Face Detection Module
+
+Detects candidate presence in real-time
+
+2️⃣ Face Tracking Module
+
+Maintains persistent identity across frames
+
+3️⃣ Eye Landmark & Head Pose Module
+
+Extracts gaze direction and orientation angles
+
+4️⃣ Behavioral Feature Extraction Module
+
+Computes movement frequency
+
+Gaze deviation duration
+
+Pose variance
+
+Face stability metrics
+
+5️⃣ Baseline Behavior Learning Module
+
+Learns normal behavioral profile
+
+Personalized per candidate
+
+6️⃣ Deviation Detection Module
+
+Measures statistical distance from baseline
+
+7️⃣ Temporal Behavior Modeling Module
+
+Models sequential behavior patterns over time
+
+8️⃣ Bayesian Intent Scoring Engine ⭐ (Core Innovation)
+
+Fuses multi-modal deviations
+
+Computes probabilistic cheating intention
+
+9️⃣ Adaptive Decision Threshold Module
+
+Converts probability into actionable risk levels
+
+🔟 Alert & Logging Module
+
+Stores behavioral evidence
+
+Generates examiner reports
+
+Mathematical Framework:
+Let:
+Gi = Gaze deviation metric
+Hi = Head orientation variance
+Fi = Face Stability score
+Di = Behavioral deviation from baseline
+Ti = Temporal anomaly factor
+The cheating probability is computed as : P(cheating) = f(Gi,Hi,Fi,Di,Ti)
+using :
+Logistic modeling
+Bayesian Inference
+Temporal Weighting 
+
+Risk Classification:
+
+| Probability Range | Risk Level | Action            |
+| ----------------- | ---------- | ----------------- |
+| 0.0 – 0.3         | Low        | Normal Monitoring |
+| 0.3 – 0.7         | Medium     | Warning Flag      |
+| 0.7 – 1.0         | High       | Alert & Logging   |
+
+Technical Advantages Over Existing Systems
+
+✔ Personalized behavioral baseline learning
+✔ Multi-modal behavioral fusion
+✔ Temporal modeling of deviations
+✔ Probability-based intention inference
+✔ Adaptive thresholding mechanism
+✔ Explainable AI framework
 
 
-Where:
-
-X = Feature vector
-
-w = Model weights
-
-b = Bias
-
-Model Justification
-
-Produces probability output
-
-Computationally efficient
-
-Suitable for real-time applications
-
-Easy to interpret and explain academically
-
-6️⃣ Technologies Used
+Implementation Technologies
 
 Python
 
@@ -89,53 +211,38 @@ OpenCV
 
 Scikit-learn
 
-FastAPI / Flask
+Deep Learning frameworks
 
-HTML, CSS, JavaScript
+FastAPI (real-time streaming)
 
-MySQL / PostgreSQL
+Relational database for behavioral logs
 
-7️⃣ System Workflow
 
-Student Authentication
+Novelty & Patent Claim Focus
 
-Baseline Behavior Learning
+The novelty does NOT lie in:
 
-Continuous Video Monitoring
+Face detection algorithms
 
-Face & Eye Tracking
+Eye tracking models
 
-Feature Extraction
+Existing deep learning architectures
 
-Behavior Deviation Analysis
+The novelty lies in:
 
-Logistic Regression Prediction
+The probabilistic fusion of multi-modal behavioral deviations with temporal modeling to compute cheating intention likelihood.
 
-Risk Level Classification
+This integrated behavioral deviation fusion architecture constitutes the core inventive step.
 
-Alert & Logging
+Future Extensions
 
-*Risk Level Classification
+Multi-room monitoring
 
-| Score Range | Risk Level | Action  |
-|------------|------------|---------|
-| 0.0 – 0.3  | Low        | Normal  |
-| 0.3 – 0.7  | Medium     | Warning |
-| 0.7 – 1.0  | High       | Alert   |
+Distributed exam hall surveillance
 
-8️⃣ Key Features
+Edge-device deployment
 
-Real-time behavioral monitoring
-
-Personalized baseline learning
-
-Probability-based cheating detection
-
-Multi-level risk classification
-
-Secure alert and logging mechanism
-
-Examiner dashboard integration
+Federated behavioral learning
 
 Modules used :
 
