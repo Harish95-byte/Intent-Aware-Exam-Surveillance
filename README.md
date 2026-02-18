@@ -136,3 +136,14 @@ Multi-level risk classification
 Secure alert and logging mechanism
 
 Examiner dashboard integration
+
+Modules used :
+
+Face Detection (YOLOv8-Face or HOG)
+Face Tracking (Deep SORT or simple centroid tracking)
+Eye + Head Pose (MediaPipe + PnP)
+Temporal Behavior Modeling (LSTM)
+Baseline Normal Behavior Learning (Autoencoder)
+Deviation Detection (Isolation Forest)
+Bayesian Intent Scoring Engine ⭐ (Core Patent Claim)
+Adaptive Decision Threshold + Logging
