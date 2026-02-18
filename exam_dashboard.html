@@ -31,7 +31,7 @@
     </div>
 </div>
 
-<!-- FULL WIDTH LIVE VIDEO -->
+<!-- LIVE VIDEO SECTION -->
 <div class="p-8">
     <div class="bg-slate-800/60 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-slate-700">
 
@@ -42,12 +42,16 @@
 
             <span id="videoStatus"
                 class="bg-gray-500/20 text-gray-400 px-4 py-1 text-sm rounded-full">
-                DISCONNECTED
+                CONNECTING...
             </span>
         </div>
 
-        <div class="bg-black h-[500px] rounded-xl flex items-center justify-center text-slate-500 text-lg">
-            No Camera Connected
+        <div class="bg-black h-[500px] rounded-xl overflow-hidden">
+            <img id="videoStream"
+                 src="/video"
+                 class="w-full h-full object-cover"
+                 onload="setConnected()"
+                 onerror="setDisconnected()" />
         </div>
 
     </div>
@@ -141,7 +145,7 @@
             <div>
                 <p class="text-slate-400 text-sm">Current Status</p>
                 <p id="studentStatus" class="font-semibold text-gray-400">
-                    Not Connected
+                    Monitoring
                 </p>
             </div>
         </div>
@@ -156,23 +160,41 @@ setInterval(() => {
         new Date().toLocaleTimeString();
 }, 1000);
 
-// CREATE CHARTS
+// VIDEO STATUS FUNCTIONS
+function setConnected() {
+    const status = document.getElementById("videoStatus");
+    status.innerText = "CONNECTED";
+    status.className =
+        "bg-green-500/20 text-green-400 px-4 py-1 text-sm rounded-full";
+}
+
+function setDisconnected() {
+    const status = document.getElementById("videoStatus");
+    status.innerText = "DISCONNECTED";
+    status.className =
+        "bg-red-500/20 text-red-400 px-4 py-1 text-sm rounded-full";
+}
+
+// CHARTS
 function createChart(id, label) {
     return new Chart(document.getElementById(id), {
         type: 'line',
-        data: { labels: [], datasets: [{
-            label: label,
-            data: [],
-            borderColor: '#3b82f6',
-            backgroundColor: 'rgba(59,130,246,0.1)',
-            tension: 0.4
-        }]},
+        data: {
+            labels: [],
+            datasets: [{
+                label: label,
+                data: [],
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59,130,246,0.1)',
+                tension: 0.4
+            }]
+        },
         options: {
             responsive: true,
-            plugins: { legend: { labels: { color: "white" } }},
+            plugins: { legend: { labels: { color: "white" } } },
             scales: {
-                x: { ticks: { color: "gray" }},
-                y: { ticks: { color: "gray" }}
+                x: { ticks: { color: "gray" } },
+                y: { ticks: { color: "gray" } }
             }
         }
     });
@@ -182,18 +204,6 @@ const eyeChart = createChart("eyeChart", "Eye Movement Variance");
 const headChart = createChart("headChart", "Head Tilt Angle");
 const deviationChart = createChart("deviationChart", "Deviation Score");
 const temporalChart = createChart("temporalChart", "Temporal Risk Score");
-
-function updateChart(chart, value) {
-    chart.data.labels.push("");
-    chart.data.datasets[0].data.push(value);
-    if (chart.data.labels.length > 20) {
-        chart.data.labels.shift();
-        chart.data.datasets[0].data.shift();
-    }
-    chart.update();
-}
-
-// DO NOT CALL connectWebSocket() UNTIL BACKEND IS READY
 
 </script>
 

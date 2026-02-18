@@ -75,3 +75,9 @@ def home():
 def video():
     return StreamingResponse(generate_frames(),
                              media_type="multipart/x-mixed-replace; boundary=frame")
+
+from fastapi.responses import FileResponse
+
+@app.get("/dashboard")
+def dashboard():
+    return FileResponse("exam_dashboard.html")
