@@ -191,7 +191,7 @@ Federated behavioral learning
 
 Modules used :
 
-Face Detection (YOLOv8-Face or HOG)
+Face Detection (HOG)
 Face Tracking (Deep SORT or simple centroid tracking)
 Eye + Head Pose (MediaPipe + PnP)
 Temporal Behavior Modeling (LSTM)
