@@ -117,61 +117,6 @@ Stores behavioral evidence
 
 Generates examiner reports
 
-System Architecture
-Core Modules
-
-1️⃣ Face Detection Module
-
-Detects candidate presence in real-time
-
-2️⃣ Face Tracking Module
-
-Maintains persistent identity across frames
-
-3️⃣ Eye Landmark & Head Pose Module
-
-Extracts gaze direction and orientation angles
-
-4️⃣ Behavioral Feature Extraction Module
-
-Computes movement frequency
-
-Gaze deviation duration
-
-Pose variance
-
-Face stability metrics
-
-5️⃣ Baseline Behavior Learning Module
-
-Learns normal behavioral profile
-
-Personalized per candidate
-
-6️⃣ Deviation Detection Module
-
-Measures statistical distance from baseline
-
-7️⃣ Temporal Behavior Modeling Module
-
-Models sequential behavior patterns over time
-
-8️⃣ Bayesian Intent Scoring Engine ⭐ (Core Innovation)
-
-Fuses multi-modal deviations
-
-Computes probabilistic cheating intention
-
-9️⃣ Adaptive Decision Threshold Module
-
-Converts probability into actionable risk levels
-
-🔟 Alert & Logging Module
-
-Stores behavioral evidence
-
-Generates examiner reports
-
 Mathematical Framework:
 Let:
 Gi = Gaze deviation metric
