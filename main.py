@@ -1,5 +1,5 @@
-from modules.face_detection.face_detection import FaceDetector
-from modules.face_recognition_module.recognizer import FaceRecognizer
+from modules.face_detection.mediapipe_detector import FaceDetector
+from modules.face_recognition_module.lbph_recognizer import FaceRecognizer
 import cv2
 
 
@@ -38,3 +38,8 @@ def run_system():
 
 if __name__ == "__main__":
     run_system()
+
+import uvicorn
+
+if __name__ == "__main__":
+    uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True)

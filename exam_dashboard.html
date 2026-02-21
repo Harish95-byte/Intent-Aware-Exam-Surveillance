@@ -154,56 +154,110 @@
 
 <script>
 
-// CLOCK
-setInterval(() => {
-    document.getElementById("clock").innerText =
-        new Date().toLocaleTimeString();
-}, 1000);
+const students = {};
 
-// VIDEO STATUS FUNCTIONS
-function setConnected() {
-    const status = document.getElementById("videoStatus");
-    status.innerText = "CONNECTED";
-    status.className =
-        "bg-green-500/20 text-green-400 px-4 py-1 text-sm rounded-full";
-}
+function createStudentCard(id, name, reg_no) {
 
-function setDisconnected() {
-    const status = document.getElementById("videoStatus");
-    status.innerText = "DISCONNECTED";
-    status.className =
-        "bg-red-500/20 text-red-400 px-4 py-1 text-sm rounded-full";
-}
+    const container = document.querySelector(".px-8.pb-8 + .px-8.pb-8") || document.body;
 
-// CHARTS
-function createChart(id, label) {
-    return new Chart(document.getElementById(id), {
-        type: 'line',
-        data: {
-            labels: [],
-            datasets: [{
-                label: label,
-                data: [],
-                borderColor: '#3b82f6',
-                backgroundColor: 'rgba(59,130,246,0.1)',
-                tension: 0.4
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: { legend: { labels: { color: "white" } } },
-            scales: {
-                x: { ticks: { color: "gray" } },
-                y: { ticks: { color: "gray" } }
+    const card = document.createElement("div");
+    card.className =
+        "bg-slate-800/60 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-slate-700 mt-6";
+
+    card.id = "student-" + id;
+
+    card.innerHTML = `
+        <h2 class="text-green-400 font-semibold text-lg mb-4">
+            ID ${id} | ${name} | ${reg_no}
+        </h2>
+
+        <div class="text-blue-300 mb-4" id="values-${id}">
+            Yaw: 0 | Pitch: 0 | Roll: 0
+        </div>
+
+        <div class="h-[300px]">
+            <canvas id="chart-${id}"></canvas>
+        </div>
+    `;
+
+    document.body.appendChild(card);
+
+    const chart = new Chart(
+        document.getElementById(`chart-${id}`),
+        {
+            type: "line",
+            data: {
+                labels: [],
+                datasets: [{
+                    label: "Yaw Angle",
+                    data: [],
+                    borderColor: "#3b82f6",
+                    backgroundColor: "rgba(59,130,246,0.1)",
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: false,
+                scales: {
+                    x: { display: false },
+                    y: {
+                        min: -90,
+                        max: 90,
+                        ticks: { color: "gray" }
+                    }
+                },
+                plugins: {
+                    legend: { labels: { color: "white" } }
+                }
             }
         }
-    });
+    );
+
+    students[id] = chart;
 }
 
-const eyeChart = createChart("eyeChart", "Eye Movement Variance");
-const headChart = createChart("headChart", "Head Tilt Angle");
-const deviationChart = createChart("deviationChart", "Deviation Score");
-const temporalChart = createChart("temporalChart", "Temporal Risk Score");
+function updateChart(chart, value) {
+
+    chart.data.labels.push("");
+    chart.data.datasets[0].data.push(Number(value));
+
+    if (chart.data.labels.length > 20) {
+        chart.data.labels.shift();
+        chart.data.datasets[0].data.shift();
+    }
+
+    chart.update();
+}
+
+async function fetchPose() {
+    try {
+        const response = await fetch("/pose");
+        const data = await response.json();
+
+        for (const id in data) {
+
+            const student = data[id];
+
+            if (!students[id]) {
+                createStudentCard(id, student.name, student.reg_no);
+            }
+
+            document.getElementById(`values-${id}`).innerText =
+                `Yaw: ${student.yaw.toFixed(2)} | ` +
+                `Pitch: ${student.pitch.toFixed(2)} | ` +
+                `Roll: ${student.roll.toFixed(2)}`;
+
+            updateChart(students[id], student.yaw);
+        }
+
+    } catch (error) {
+        console.log("Error fetching pose:", error);
+    }
+}
+
+setInterval(fetchPose, 1000);
 
 </script>
 
