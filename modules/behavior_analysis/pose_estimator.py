@@ -27,7 +27,7 @@ class HeadPoseEstimator:
 
         img_h, img_w, _ = frame.shape
 
-        # Important landmarks for head pose
+        # --- SolvePnP for Yaw & Pitch ---
         landmark_ids = [33, 263, 1, 61, 291, 199]
 
         face_2d = []
@@ -64,6 +64,14 @@ class HeadPoseEstimator:
 
         pitch = angles[0] * 360
         yaw = angles[1] * 360
-        roll = angles[2] * 360
+
+        # --- 🔥 Accurate Roll Using Eye Alignment ---
+        left_eye = face_landmarks.landmark[33]
+        right_eye = face_landmarks.landmark[263]
+
+        x1, y1 = left_eye.x * img_w, left_eye.y * img_h
+        x2, y2 = right_eye.x * img_w, right_eye.y * img_h
+
+        roll = np.degrees(np.arctan2(y2 - y1, x2 - x1))
 
         return yaw, pitch, roll

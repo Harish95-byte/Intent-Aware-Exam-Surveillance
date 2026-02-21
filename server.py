@@ -14,9 +14,8 @@ recognizer = LBPHRecognizer()
 tracker = CentroidTracker()
 pose_estimator = HeadPoseEstimator()
 
-# Use default camera (Windows)
+# Camera setup
 cap = None
-
 for i in range(5):
     temp = cv2.VideoCapture(i, cv2.CAP_DSHOW)
     if temp.isOpened():
@@ -27,23 +26,21 @@ for i in range(5):
 if cap is None:
     raise Exception("No camera found")
 
-if not cap.isOpened():
-    print("❌ Camera not opened")
-else:
-    print("✅ Camera started successfully")
+print("✅ Camera started successfully")
 
 latest_pose = {}
+previous_pose = {}   # 🔥 NEW: store previous frame values
 
 
 def generate_frames():
-    global latest_pose
+    global latest_pose, previous_pose
 
     while True:
         success, frame = cap.read()
         if not success:
             break
 
-        latest_pose = {}  # reset every frame
+        latest_pose.clear()   # 🔥 DO NOT reset dictionary reference
 
         faces = detector.detect(frame)
 
@@ -55,7 +52,6 @@ def generate_frames():
 
         for object_id, centroid in objects.items():
 
-    # Find closest bounding box to this centroid
             min_distance = float("inf")
             matched_box = None
 
@@ -63,7 +59,8 @@ def generate_frames():
                 cX = int((left + right) / 2)
                 cY = int((top + bottom) / 2)
 
-                distance = ((centroid[0] - cX) ** 2 + (centroid[1] - cY) ** 2) ** 0.5
+                distance = ((centroid[0] - cX) ** 2 +
+                            (centroid[1] - cY) ** 2) ** 0.5
 
                 if distance < min_distance:
                     min_distance = distance
@@ -80,9 +77,42 @@ def generate_frames():
 
             name, reg_no = recognizer.recognize(face_crop)
 
-            # ✅ FIXED: pose from face only
-            yaw, pitch, roll = pose_estimator.estimate(face_crop)
+            # Raw pose
+            raw_yaw, raw_pitch, raw_roll = pose_estimator.estimate(face_crop)
 
+            # 🔥 STABILITY FILTER
+            alpha = 0.8       # smoothing strength
+            dead_zone = 1.2   # ignore tiny movement
+
+            prev = previous_pose.get(object_id)
+
+            if prev:
+                # Exponential smoothing
+                yaw = alpha * prev["yaw"] + (1 - alpha) * raw_yaw
+                pitch = alpha * prev["pitch"] + (1 - alpha) * raw_pitch
+                roll = alpha * prev["roll"] + (1 - alpha) * raw_roll
+
+                # Dead-zone filtering
+                if abs(yaw - prev["yaw"]) < dead_zone:
+                    yaw = prev["yaw"]
+
+                if abs(pitch - prev["pitch"]) < dead_zone:
+                    pitch = prev["pitch"]
+
+                if abs(roll - prev["roll"]) < dead_zone:
+                    roll = prev["roll"]
+
+            else:
+                yaw, pitch, roll = raw_yaw, raw_pitch, raw_roll
+
+            # Save for next frame memory
+            previous_pose[object_id] = {
+                "yaw": yaw,
+                "pitch": pitch,
+                "roll": roll
+            }
+
+            # Store output for frontend
             latest_pose[object_id] = {
                 "name": name,
                 "reg_no": reg_no,
@@ -93,7 +123,8 @@ def generate_frames():
 
             label = f"ID {object_id} | {name} | {reg_no}"
 
-            cv2.rectangle(frame, (left, top), (right, bottom), (0, 255, 0), 2)
+            cv2.rectangle(frame, (left, top), (right, bottom),
+                          (0, 255, 0), 2)
             cv2.putText(frame, label, (left, top - 10),
                         cv2.FONT_HERSHEY_SIMPLEX,
                         0.6, (0, 255, 0), 2)
