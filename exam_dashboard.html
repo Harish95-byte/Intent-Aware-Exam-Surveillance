@@ -95,7 +95,7 @@ function createStudentCard(id, name, reg_no) {
             ID ${id} | ${name} | ${reg_no}
         </h2>
 
-        <div class="grid grid-cols-6 gap-6">
+        <div class="grid grid-cols-8 gap-6">
 
             <div class="bg-slate-700 p-4 rounded-xl">
                 <h3 class="text-blue-300 mb-2">Head Movement</h3>
@@ -134,6 +134,20 @@ function createStudentCard(id, name, reg_no) {
                 <h3 class="text-orange-300 mb-2">Suspicion Score</h3>
                 <p id="prob-${id}" class="text-2xl font-bold text-green-400">0%</p>
                 <p id="risk-${id}" class="text-lg font-semibold text-green-400">Normal</p>
+            </div>
+
+            <div class="bg-slate-700 p-4 rounded-xl">
+                <h3 class="text-pink-300 mb-2">Reason</h3>
+                <p id="reason-${id}" class="text-lg font-semibold text-pink-400">
+                    Stable
+                </p>
+            </div>
+
+            <div class="bg-slate-700 p-4 rounded-xl">
+                <h3 class="text-indigo-300 mb-2">Student Risk Index</h3>
+                <p id="sri-${id}" class="text-lg font-semibold text-indigo-400">
+                    0
+                </p>
             </div>
 
         </div>
@@ -178,16 +192,11 @@ function updateStudent(id, data) {
     const roll = Number(data.roll ?? 0);
     const blink = Number(data.blink ?? 0);
     const mouth = Number(data.mouth ?? 0);
-
-    // FIXED MOBILE CHECK
     const mobile = data.mobile == 1 ? 1 : 0;
-
-    // FIXED PROBABILITY CHECK
-    const probability = (data.probability !== undefined && !isNaN(data.probability))
-        ? Number(data.probability)
-        : 0;
-
+    const probability = Number(data.probability ?? 0);
     const risk = data.risk ?? "Normal";
+    const reason = data.reason ?? "Stable";
+    const sri = data.sri ?? 0;
 
     /* GRAPH */
     student.headChart.data.labels.push("");
@@ -205,21 +214,16 @@ function updateStudent(id, data) {
     document.getElementById(`yaw-${id}`).innerText = yaw.toFixed(2);
     document.getElementById(`pitch-${id}`).innerText = pitch.toFixed(2);
     document.getElementById(`roll-${id}`).innerText = roll.toFixed(2);
-
-    document.getElementById(`blink-${id}`).innerText =
-        "Blink Count: " + blink;
-
-    document.getElementById(`mouth-${id}`).innerText =
-        mouth === 1 ? "Open" : "Closed";
+    document.getElementById(`blink-${id}`).innerText = "Blink Count: " + blink;
+    document.getElementById(`mouth-${id}`).innerText = mouth === 1 ? "Open" : "Closed";
+    document.getElementById(`reason-${id}`).innerText = reason;
+    document.getElementById(`sri-${id}`).innerText = sri;
 
     const mobileEl = document.getElementById(`mobile-${id}`);
-    if (mobile === 1) {
-        mobileEl.innerText = "Present ⚠";
-        mobileEl.className = "text-xl font-semibold text-red-500";
-    } else {
-        mobileEl.innerText = "Not Present";
-        mobileEl.className = "text-xl font-semibold text-green-400";
-    }
+    mobileEl.innerText = mobile === 1 ? "Present ⚠" : "Not Present";
+    mobileEl.className = mobile === 1
+        ? "text-xl font-semibold text-red-500"
+        : "text-xl font-semibold text-green-400";
 
     const probEl = document.getElementById(`prob-${id}`);
     const riskEl = document.getElementById(`risk-${id}`);

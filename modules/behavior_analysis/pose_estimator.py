@@ -23,6 +23,9 @@ class HeadPoseEstimator:
         self.prev_pitch = 0
         self.prev_roll = 0
 
+        # 🔥 NEW: mouth smoothing
+        self.mouth_open_frames = 0
+
     # ================= EAR =================
     def calculate_EAR(self, landmarks, eye_points, w, h):
 
@@ -62,7 +65,6 @@ class HeadPoseEstimator:
 
         h, w, _ = frame.shape
 
-        # Slight brightness stabilization
         frame = cv2.convertScaleAbs(frame, alpha=1.05, beta=-5)
 
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -118,12 +120,10 @@ class HeadPoseEstimator:
         yaw = angles[1]
         roll = angles[2]
 
-        # Clamp angles
         yaw = max(min(yaw, 40), -40)
         pitch = max(min(pitch, 40), -40)
         roll = max(min(roll, 40), -40)
 
-        # Smooth angles
         yaw = 0.7 * self.prev_yaw + 0.3 * yaw
         pitch = 0.7 * self.prev_pitch + 0.3 * pitch
         roll = 0.7 * self.prev_roll + 0.3 * roll
@@ -132,7 +132,7 @@ class HeadPoseEstimator:
         self.prev_pitch = pitch
         self.prev_roll = roll
 
-        # ================= BLINK (Sensitive) =================
+        # ================= BLINK =================
 
         left_eye = [33, 160, 158, 133, 153, 144]
         right_eye = [362, 385, 387, 263, 373, 380]
@@ -143,32 +143,34 @@ class HeadPoseEstimator:
         ear = (left_EAR + right_EAR) / 2.0
 
         EAR_THRESHOLD = 0.28
-        CONSEC_FRAMES = 1
 
         if ear < EAR_THRESHOLD:
             self.eye_closed_frames += 1
         else:
-            if self.eye_closed_frames >= CONSEC_FRAMES:
+            if self.eye_closed_frames >= 1:
                 self.blink_counter += 1
             self.eye_closed_frames = 0
 
         blink_count = self.blink_counter
 
-        # ================= MOUTH (Talking Sensitive) =================
+        # ================= MOUTH (Improved) =================
 
         mar = self.calculate_MAR(landmarks, w, h)
-
         face_height = abs((landmarks[152].y - landmarks[10].y) * h)
 
-        if face_height == 0:
-            mouth_open = 0
-        else:
+        mouth_open = 0
+
+        if face_height != 0:
             normalized_mar = mar / face_height
 
-            # More sensitive threshold for normal talking
-            if normalized_mar > 0.045:
-                mouth_open = 1
+            # 🔥 LOWER threshold slightly for head rotation cases
+            if normalized_mar > 0.035:
+                self.mouth_open_frames += 1
             else:
-                mouth_open = 0
+                self.mouth_open_frames = 0
+
+            # Require 2 consecutive frames to avoid noise
+            if self.mouth_open_frames >= 2:
+                mouth_open = 1
 
         return yaw, pitch, roll, blink_count, mouth_open

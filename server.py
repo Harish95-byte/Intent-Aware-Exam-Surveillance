@@ -1,18 +1,17 @@
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse, HTMLResponse
 import cv2
-import numpy as np
 import csv
 import os
 import time
 from datetime import datetime
 from ultralytics import YOLO
-import pandas as pd
 
 from modules.face_detection.mediapipe_detector import MediaPipeFaceDetector
 from modules.face_recognition_module.arcface_recognizer import ArcFaceRecognizer
 from modules.tracking.centroid_tracker import CentroidTracker
 from modules.behavior_analysis.pose_estimator import HeadPoseEstimator
+from modules.behavior_analysis.probabilistic_fusion_engine import ProbabilisticFusionEngine
 
 app = FastAPI()
 
@@ -22,6 +21,7 @@ detector = MediaPipeFaceDetector()
 recognizer = ArcFaceRecognizer()
 tracker = CentroidTracker()
 pose_estimator = HeadPoseEstimator()
+fusion_engine = ProbabilisticFusionEngine(window_size=5)
 
 yolo_model = YOLO("yolov8n.pt")
 
@@ -42,54 +42,31 @@ if not os.path.exists(CSV_FILE):
         writer.writerow([
             "timestamp",
             "student_id",
-            "yaw",
-            "pitch",
-            "roll",
+            "max_yaw_dev",
+            "max_pitch_dev",
+            "max_roll_dev",
             "blink_rate",
-            "mouth_ratio",
-            "mobile_ratio"
+            "mouth_seen",
+            "mobile_seen"
         ])
 
 # ================= GLOBALS =================
 
-WINDOW_DURATION = 30
-window_start = time.time()
-
-window_data = {}
 latest_pose = {}
 identity_lock = {}
+last_log_time = {}
+behavior_window_flags = {}
+behavior_window_metrics = {}
 
-# ===== NEW: baseline correction variables =====
+LOG_INTERVAL = 30
 baseline_yaw = None
 baseline_pitch = None
-DEAD_ZONE = 8
-
-# ================= PROBABILITY FUNCTION =================
-
-def compute_probability(student_id, yaw, pitch, blink_rate, mobile, mouth):
-
-    if mobile == 1:
-        return 1.0, "High"
-
-    abs_yaw = abs(yaw)
-    abs_pitch = abs(pitch)
-
-    if abs_yaw < 15 and abs_pitch < 15:
-        if mouth == 1:
-            return 0.4, "Moderate"
-        return 0.05, "Normal"
-
-    if abs_yaw < 35 and abs_pitch < 35:
-        if mouth == 1:
-            return 0.9, "High"
-        return 0.5, "Moderate"
-
-    return 0.9, "High"
+DEAD_ZONE = 5
 
 # ================= LOG FUNCTION =================
 
 def log_behavior(student_id, yaw, pitch, roll,
-                 blink_rate, mouth_ratio, mobile_ratio):
+                 blink_rate, mouth_seen, mobile_seen):
 
     with open(CSV_FILE, mode="a", newline="") as file:
         writer = csv.writer(file)
@@ -99,15 +76,15 @@ def log_behavior(student_id, yaw, pitch, roll,
             round(yaw, 2),
             round(pitch, 2),
             round(roll, 2),
-            round(blink_rate, 2),
-            round(mouth_ratio, 2),
-            round(mobile_ratio, 2)
+            round(blink_rate, 3),
+            mouth_seen,
+            mobile_seen
         ])
 
 # ================= FRAME LOOP =================
 
 def generate_frames():
-    global window_start, baseline_yaw, baseline_pitch
+    global baseline_yaw, baseline_pitch
 
     while True:
         success, frame = cap.read()
@@ -126,14 +103,14 @@ def generate_frames():
 
             if label == "cell phone":
                 mobile_detected = 1
-
                 x1, y1, x2, y2 = map(int, box.xyxy[0])
+
                 cv2.rectangle(frame, (x1, y1), (x2, y2),
                               (0, 0, 255), 2)
-                cv2.putText(frame, "Mobile",
-                            (x1, y1 - 5),
+                cv2.putText(frame, "Mobile Phone",
+                            (x1, y1 - 8),
                             cv2.FONT_HERSHEY_SIMPLEX,
-                            0.6,
+                            0.7,
                             (0, 0, 255), 2)
 
         # ================= FACE DETECTION =================
@@ -142,7 +119,9 @@ def generate_frames():
         rects = []
 
         for (top, right, bottom, left) in faces:
-            if right - left > 80 and bottom - top > 80:
+            width = right - left
+            height = bottom - top
+            if width > 40 and height > 40:
                 rects.append((left, top, right, bottom))
 
         objects = tracker.update(rects)
@@ -150,12 +129,12 @@ def generate_frames():
 
         for object_id, centroid in objects.items():
 
-            if len(rects) == 0:
+            if object_id >= len(rects):
                 continue
 
-            (left, top, right, bottom) = rects[0]
-            face_crop = frame[top:bottom, left:right]
+            (left, top, right, bottom) = rects[object_id]
 
+            face_crop = frame[top:bottom, left:right]
             if face_crop.size == 0:
                 continue
 
@@ -171,7 +150,6 @@ def generate_frames():
 
             yaw, pitch, roll, blink, mouth = pose_estimator.estimate(face_crop)
 
-            # ===== NEW: Baseline auto calibration =====
             if baseline_yaw is None:
                 baseline_yaw = yaw
                 baseline_pitch = pitch
@@ -179,7 +157,6 @@ def generate_frames():
             yaw -= baseline_yaw
             pitch -= baseline_pitch
 
-            # ===== NEW: Dead-zone filter =====
             if abs(yaw) < DEAD_ZONE:
                 yaw = 0
             if abs(pitch) < DEAD_ZONE:
@@ -189,14 +166,94 @@ def generate_frames():
 
             blink_rate_live = blink / 30.0
 
-            probability, risk = compute_probability(
-                student_id,
-                yaw,
-                pitch,
-                blink_rate_live,
-                mobile_detected,
-                mouth
+            probability, risk,reason = fusion_engine.update(
+                student_id=student_id,
+                yaw=yaw,
+                pitch=pitch,
+                blink=blink_rate_live,
+                mouth=mouth,
+                mobile=mobile_detected
             )
+
+            # ===== Window Tracking =====
+
+            if student_id not in behavior_window_flags:
+                behavior_window_flags[student_id] = {
+                    "mobile_seen": 0,
+                    "mouth_seen": 0
+                }
+
+            if student_id not in behavior_window_metrics:
+                behavior_window_metrics[student_id] = {
+                    "max_yaw": 0,
+                    "max_pitch": 0,
+                    "max_roll": 0
+                }
+
+            # Track deviations
+            behavior_window_metrics[student_id]["max_yaw"] = max(
+                behavior_window_metrics[student_id]["max_yaw"], abs(yaw)
+            )
+            behavior_window_metrics[student_id]["max_pitch"] = max(
+                behavior_window_metrics[student_id]["max_pitch"], abs(pitch)
+            )
+            behavior_window_metrics[student_id]["max_roll"] = max(
+                behavior_window_metrics[student_id]["max_roll"], abs(roll)
+            )
+
+            if mobile_detected == 1:
+                behavior_window_flags[student_id]["mobile_seen"] = 1
+
+            if mouth == 1:
+                behavior_window_flags[student_id]["mouth_seen"] = 1
+
+            current_time = time.time()
+
+            if student_id not in last_log_time:
+                last_log_time[student_id] = current_time
+
+            # ===== STRICT STORE CONDITION =====
+            if current_time - last_log_time[student_id] >= LOG_INTERVAL:
+
+                flags = behavior_window_flags[student_id]
+                metrics = behavior_window_metrics[student_id]
+
+                if flags["mobile_seen"] == 1 and flags["mouth_seen"] == 1:
+
+                    log_behavior(
+                        student_id,
+                        metrics["max_yaw"],
+                        metrics["max_pitch"],
+                        metrics["max_roll"],
+                        blink_rate_live,
+                        flags["mouth_seen"],
+                        flags["mobile_seen"]
+                    )
+
+                # Reset window
+                behavior_window_flags[student_id] = {
+                    "mobile_seen": 0,
+                    "mouth_seen": 0
+                }
+
+                behavior_window_metrics[student_id] = {
+                    "max_yaw": 0,
+                    "max_pitch": 0,
+                    "max_roll": 0
+                }
+
+                last_log_time[student_id] = current_time
+
+            # Draw face
+            cv2.rectangle(frame, (left, top),
+                          (right, bottom), (0, 255, 0), 2)
+
+            cv2.putText(frame,
+                        f"ID {object_id} | {name} | {student_id}",
+                        (left, top - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.7,
+                        (255, 255, 255), 2)
 
             latest_pose[object_id] = {
                 "name": name,
@@ -208,20 +265,10 @@ def generate_frames():
                 "mouth": mouth,
                 "mobile": mobile_detected,
                 "probability": probability,
-                "risk": risk
+                "risk": risk,
+                "reason": reason,
+                "sri": fusion_engine.get_student_risk_index(student_id)
             }
-
-            cv2.rectangle(frame,
-                          (left, top),
-                          (right, bottom),
-                          (0, 255, 0), 2)
-
-            cv2.putText(frame,
-                        f"ID {object_id} | {name} | {student_id}",
-                        (left, top - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.7,
-                        (255, 255, 255), 2)
 
         ret, buffer = cv2.imencode(".jpg", frame)
 
@@ -247,3 +294,7 @@ def video_feed():
 @app.get("/pose")
 def get_pose():
     return latest_pose
+
+@app.get("/report/{student_id}")
+def get_exam_report(student_id: str):
+    return fusion_engine.generate_exam_report(student_id)
