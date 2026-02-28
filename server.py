@@ -12,6 +12,7 @@ from modules.face_recognition_module.arcface_recognizer import ArcFaceRecognizer
 from modules.tracking.centroid_tracker import CentroidTracker
 from modules.behavior_analysis.pose_estimator import HeadPoseEstimator
 from modules.behavior_analysis.probabilistic_fusion_engine import ProbabilisticFusionEngine
+from modules.behavior_analysis.event_logger import EventLogger
 
 app = FastAPI()
 
@@ -22,12 +23,21 @@ recognizer = ArcFaceRecognizer()
 tracker = CentroidTracker()
 pose_estimator = HeadPoseEstimator()
 fusion_engine = ProbabilisticFusionEngine(window_size=5)
+event_logger = EventLogger()
 
-yolo_model = YOLO("yolov8n.pt")
+try:
+    yolo_model = YOLO("yolov8n.pt")
+except Exception as e:
+    print("YOLO load failed:", e)
+    yolo_model = None
 
 # ================= CAMERA =================
 
-cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+cap = cv2.VideoCapture(0)
+
+if not cap.isOpened():
+    print("⚠ Camera not detected!")
+
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 cap.set(cv2.CAP_PROP_FPS, 15)
@@ -87,195 +97,203 @@ def generate_frames():
     global baseline_yaw, baseline_pitch
 
     while True:
-        success, frame = cap.read()
-        if not success:
-            break
 
-        mobile_detected = 0
-
-        # ================= MOBILE DETECTION =================
-
-        results = yolo_model(frame, conf=0.3, verbose=False)[0]
-
-        for box in results.boxes:
-            cls_id = int(box.cls[0])
-            label = yolo_model.names[cls_id]
-
-            if label == "cell phone":
-                mobile_detected = 1
-                x1, y1, x2, y2 = map(int, box.xyxy[0])
-
-                cv2.rectangle(frame, (x1, y1), (x2, y2),
-                              (0, 0, 255), 2)
-                cv2.putText(frame, "Mobile Phone",
-                            (x1, y1 - 8),
-                            cv2.FONT_HERSHEY_SIMPLEX,
-                            0.7,
-                            (0, 0, 255), 2)
-
-        # ================= FACE DETECTION =================
-
-        faces = detector.detect(frame)
-        rects = []
-
-        for (top, right, bottom, left) in faces:
-            width = right - left
-            height = bottom - top
-            if width > 40 and height > 40:
-                rects.append((left, top, right, bottom))
-
-        objects = tracker.update(rects)
-        latest_pose.clear()
-
-        for object_id, centroid in objects.items():
-
-            if object_id >= len(rects):
+        try:
+            success, frame = cap.read()
+            if not success:
                 continue
 
-            (left, top, right, bottom) = rects[object_id]
+            mobile_detected = 0
 
-            face_crop = frame[top:bottom, left:right]
-            if face_crop.size == 0:
-                continue
+            # ================= MOBILE DETECTION =================
+            if yolo_model:
+                results = yolo_model(frame, conf=0.3, verbose=False)[0]
+                for box in results.boxes:
+                    cls_id = int(box.cls[0])
+                    label = yolo_model.names[cls_id]
 
-            if object_id not in identity_lock:
-                name, reg_no = recognizer.recognize(face_crop)
-                if reg_no and reg_no != "Unknown":
-                    identity_lock[object_id] = (name, reg_no.strip())
-                else:
+                    if label == "cell phone":
+                        mobile_detected = 1
+                        x1, y1, x2, y2 = map(int, box.xyxy[0])
+                        cv2.rectangle(frame, (x1, y1), (x2, y2),
+                                      (0, 0, 255), 2)
+                        cv2.putText(frame, "Mobile Phone",
+                                    (x1, y1 - 8),
+                                    cv2.FONT_HERSHEY_SIMPLEX,
+                                    0.7,
+                                    (0, 0, 255), 2)
+
+            # ================= FACE DETECTION =================
+
+            faces = detector.detect(frame)
+            rects = []
+
+            for (top, right, bottom, left) in faces:
+                if (right - left) > 40 and (bottom - top) > 40:
+                    rects.append((left, top, right, bottom))
+
+            objects = tracker.update(rects)
+            latest_pose.clear()
+
+            for object_id, centroid in objects.items():
+
+                if object_id >= len(rects):
                     continue
 
-            name, reg_no = identity_lock[object_id]
-            student_id = reg_no.strip()
+                (left, top, right, bottom) = rects[object_id]
+                face_crop = frame[top:bottom, left:right]
 
-            yaw, pitch, roll, blink, mouth = pose_estimator.estimate(face_crop)
+                if face_crop.size == 0:
+                    continue
 
-            if baseline_yaw is None:
-                baseline_yaw = yaw
-                baseline_pitch = pitch
+                # ================= ID LOCK =================
+                if object_id not in identity_lock:
+                    name, reg_no = recognizer.recognize(face_crop)
+                    if reg_no and reg_no != "Unknown":
+                        identity_lock[object_id] = (name, reg_no.strip())
+                    else:
+                        continue
 
-            yaw -= baseline_yaw
-            pitch -= baseline_pitch
+                name, reg_no = identity_lock[object_id]
+                student_id = reg_no.strip()
 
-            if abs(yaw) < DEAD_ZONE:
-                yaw = 0
-            if abs(pitch) < DEAD_ZONE:
-                pitch = 0
-            if abs(roll) < DEAD_ZONE:
-                roll = 0
+                # ================= POSE =================
+                yaw, pitch, roll, blink, mouth = pose_estimator.estimate(face_crop)
 
-            blink_rate_live = blink / 30.0
+                if baseline_yaw is None:
+                    baseline_yaw = yaw
+                    baseline_pitch = pitch
 
-            probability, risk,reason = fusion_engine.update(
-                student_id=student_id,
-                yaw=yaw,
-                pitch=pitch,
-                blink=blink_rate_live,
-                mouth=mouth,
-                mobile=mobile_detected
-            )
+                yaw -= baseline_yaw
+                pitch -= baseline_pitch
 
-            # ===== Window Tracking =====
+                if abs(yaw) < DEAD_ZONE:
+                    yaw = 0
+                if abs(pitch) < DEAD_ZONE:
+                    pitch = 0
+                if abs(roll) < DEAD_ZONE:
+                    roll = 0
 
-            if student_id not in behavior_window_flags:
-                behavior_window_flags[student_id] = {
-                    "mobile_seen": 0,
-                    "mouth_seen": 0
+                blink_rate_live = blink / 30.0
+
+                result = fusion_engine.update(
+                    student_id=student_id,
+                    yaw=yaw,
+                    pitch=pitch,
+                    blink=blink_rate_live,
+                    mouth=mouth,
+                    mobile=mobile_detected
+                )
+
+                if len(result) == 4:
+                    probability, risk, reason, escalation_status = result
+                else:
+                    probability, risk, reason = result
+                    escalation_status = "Normal Monitoring"
+
+                # ================= RESTORED WINDOW LOGIC =================
+
+                if student_id not in behavior_window_flags:
+                    behavior_window_flags[student_id] = {
+                        "mobile_seen": 0,
+                        "mouth_seen": 0
+                    }
+
+                if student_id not in behavior_window_metrics:
+                    behavior_window_metrics[student_id] = {
+                        "max_yaw": 0,
+                        "max_pitch": 0,
+                        "max_roll": 0
+                    }
+
+                behavior_window_metrics[student_id]["max_yaw"] = max(
+                    behavior_window_metrics[student_id]["max_yaw"], abs(yaw)
+                )
+                behavior_window_metrics[student_id]["max_pitch"] = max(
+                    behavior_window_metrics[student_id]["max_pitch"], abs(pitch)
+                )
+                behavior_window_metrics[student_id]["max_roll"] = max(
+                    behavior_window_metrics[student_id]["max_roll"], abs(roll)
+                )
+
+                if mobile_detected == 1:
+                    behavior_window_flags[student_id]["mobile_seen"] = 1
+
+                if mouth == 1:
+                    behavior_window_flags[student_id]["mouth_seen"] = 1
+
+                current_time = time.time()
+
+                if student_id not in last_log_time:
+                    last_log_time[student_id] = current_time
+
+                if current_time - last_log_time[student_id] >= LOG_INTERVAL:
+
+                    flags = behavior_window_flags[student_id]
+                    metrics = behavior_window_metrics[student_id]
+
+                    if flags["mobile_seen"] == 1 and flags["mouth_seen"] == 1:
+                        log_behavior(
+                            student_id,
+                            metrics["max_yaw"],
+                            metrics["max_pitch"],
+                            metrics["max_roll"],
+                            blink_rate_live,
+                            flags["mouth_seen"],
+                            flags["mobile_seen"]
+                        )
+
+                    behavior_window_flags[student_id] = {
+                        "mobile_seen": 0,
+                        "mouth_seen": 0
+                    }
+
+                    behavior_window_metrics[student_id] = {
+                        "max_yaw": 0,
+                        "max_pitch": 0,
+                        "max_roll": 0
+                    }
+
+                    last_log_time[student_id] = current_time
+
+                # ================= DRAW =================
+
+                cv2.rectangle(frame, (left, top),
+                              (right, bottom), (0, 255, 0), 2)
+
+                cv2.putText(frame,
+                            f"ID {object_id} | {name} | {student_id}",
+                            (left, top - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            0.7,
+                            (255, 255, 255), 2)
+
+                latest_pose[object_id] = {
+                    "name": name,
+                    "reg_no": student_id,
+                    "yaw": round(float(yaw), 2),
+                    "pitch": round(float(pitch), 2),
+                    "roll": round(float(roll), 2),
+                    "blink": blink,
+                    "mouth": mouth,
+                    "mobile": mobile_detected,
+                    "probability": probability,
+                    "risk": risk,
+                    "reason": reason,
+                    "escalation_status": escalation_status,
+                    "sri": fusion_engine.get_student_risk_index(student_id)
                 }
 
-            if student_id not in behavior_window_metrics:
-                behavior_window_metrics[student_id] = {
-                    "max_yaw": 0,
-                    "max_pitch": 0,
-                    "max_roll": 0
-                }
+            ret, buffer = cv2.imencode(".jpg", frame)
 
-            # Track deviations
-            behavior_window_metrics[student_id]["max_yaw"] = max(
-                behavior_window_metrics[student_id]["max_yaw"], abs(yaw)
-            )
-            behavior_window_metrics[student_id]["max_pitch"] = max(
-                behavior_window_metrics[student_id]["max_pitch"], abs(pitch)
-            )
-            behavior_window_metrics[student_id]["max_roll"] = max(
-                behavior_window_metrics[student_id]["max_roll"], abs(roll)
-            )
+            yield (b"--frame\r\n"
+                   b"Content-Type: image/jpeg\r\n\r\n" +
+                   buffer.tobytes() +
+                   b"\r\n")
 
-            if mobile_detected == 1:
-                behavior_window_flags[student_id]["mobile_seen"] = 1
-
-            if mouth == 1:
-                behavior_window_flags[student_id]["mouth_seen"] = 1
-
-            current_time = time.time()
-
-            if student_id not in last_log_time:
-                last_log_time[student_id] = current_time
-
-            # ===== STRICT STORE CONDITION =====
-            if current_time - last_log_time[student_id] >= LOG_INTERVAL:
-
-                flags = behavior_window_flags[student_id]
-                metrics = behavior_window_metrics[student_id]
-
-                if flags["mobile_seen"] == 1 and flags["mouth_seen"] == 1:
-
-                    log_behavior(
-                        student_id,
-                        metrics["max_yaw"],
-                        metrics["max_pitch"],
-                        metrics["max_roll"],
-                        blink_rate_live,
-                        flags["mouth_seen"],
-                        flags["mobile_seen"]
-                    )
-
-                # Reset window
-                behavior_window_flags[student_id] = {
-                    "mobile_seen": 0,
-                    "mouth_seen": 0
-                }
-
-                behavior_window_metrics[student_id] = {
-                    "max_yaw": 0,
-                    "max_pitch": 0,
-                    "max_roll": 0
-                }
-
-                last_log_time[student_id] = current_time
-
-            # Draw face
-            cv2.rectangle(frame, (left, top),
-                          (right, bottom), (0, 255, 0), 2)
-
-            cv2.putText(frame,
-                        f"ID {object_id} | {name} | {student_id}",
-                        (left, top - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.7,
-                        (255, 255, 255), 2)
-
-            latest_pose[object_id] = {
-                "name": name,
-                "reg_no": student_id,
-                "yaw": round(float(yaw), 2),
-                "pitch": round(float(pitch), 2),
-                "roll": round(float(roll), 2),
-                "blink": blink,
-                "mouth": mouth,
-                "mobile": mobile_detected,
-                "probability": probability,
-                "risk": risk,
-                "reason": reason,
-                "sri": fusion_engine.get_student_risk_index(student_id)
-            }
-
-        ret, buffer = cv2.imencode(".jpg", frame)
-
-        yield (b"--frame\r\n"
-               b"Content-Type: image/jpeg\r\n\r\n" +
-               buffer.tobytes() +
-               b"\r\n")
+        except Exception as e:
+            print("Frame loop error:", e)
+            continue
 
 # ================= ROUTES =================
 
