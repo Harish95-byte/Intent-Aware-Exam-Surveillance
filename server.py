@@ -7,6 +7,7 @@ import os
 import time
 from datetime import datetime
 from ultralytics import YOLO
+import pandas as pd
 
 from modules.face_detection.mediapipe_detector import MediaPipeFaceDetector
 from modules.face_recognition_module.arcface_recognizer import ArcFaceRecognizer
@@ -49,7 +50,7 @@ if not os.path.exists(CSV_FILE):
             "mobile_ratio"
         ])
 
-# ================= WINDOW SETTINGS =================
+# ================= GLOBALS =================
 
 WINDOW_DURATION = 30
 window_start = time.time()
@@ -57,6 +58,33 @@ window_start = time.time()
 window_data = {}
 latest_pose = {}
 identity_lock = {}
+
+# ===== NEW: baseline correction variables =====
+baseline_yaw = None
+baseline_pitch = None
+DEAD_ZONE = 8
+
+# ================= PROBABILITY FUNCTION =================
+
+def compute_probability(student_id, yaw, pitch, blink_rate, mobile, mouth):
+
+    if mobile == 1:
+        return 1.0, "High"
+
+    abs_yaw = abs(yaw)
+    abs_pitch = abs(pitch)
+
+    if abs_yaw < 15 and abs_pitch < 15:
+        if mouth == 1:
+            return 0.4, "Moderate"
+        return 0.05, "Normal"
+
+    if abs_yaw < 35 and abs_pitch < 35:
+        if mouth == 1:
+            return 0.9, "High"
+        return 0.5, "Moderate"
+
+    return 0.9, "High"
 
 # ================= LOG FUNCTION =================
 
@@ -79,17 +107,18 @@ def log_behavior(student_id, yaw, pitch, roll,
 # ================= FRAME LOOP =================
 
 def generate_frames():
-    global window_start
+    global window_start, baseline_yaw, baseline_pitch
 
     while True:
         success, frame = cap.read()
         if not success:
             break
 
+        mobile_detected = 0
+
         # ================= MOBILE DETECTION =================
 
-        mobile_detected = 0
-        results = yolo_model(frame, verbose=False)[0]
+        results = yolo_model(frame, conf=0.3, verbose=False)[0]
 
         for box in results.boxes:
             cls_id = int(box.cls[0])
@@ -130,125 +159,76 @@ def generate_frames():
             if face_crop.size == 0:
                 continue
 
-            # Recognition Lock
             if object_id not in identity_lock:
                 name, reg_no = recognizer.recognize(face_crop)
-                if reg_no:
-                    identity_lock[object_id] = (name, reg_no)
-            else:
-                name, reg_no = identity_lock[object_id]
+                if reg_no and reg_no != "Unknown":
+                    identity_lock[object_id] = (name, reg_no.strip())
+                else:
+                    continue
 
-            if object_id not in identity_lock:
-                continue
-
-            student_id = reg_no
+            name, reg_no = identity_lock[object_id]
+            student_id = reg_no.strip()
 
             yaw, pitch, roll, blink, mouth = pose_estimator.estimate(face_crop)
 
-            # ================= WINDOW STORE =================
+            # ===== NEW: Baseline auto calibration =====
+            if baseline_yaw is None:
+                baseline_yaw = yaw
+                baseline_pitch = pitch
 
-            if student_id not in window_data:
-                window_data[student_id] = {
-                    "yaw": [],
-                    "pitch": [],
-                    "roll": [],
-                    "blink": 0,
-                    "mouth": 0,
-                    "mobile": 0,
-                    "frames": 0
-                }
+            yaw -= baseline_yaw
+            pitch -= baseline_pitch
 
-            window_data[student_id]["yaw"].append(yaw)
-            window_data[student_id]["pitch"].append(pitch)
-            window_data[student_id]["roll"].append(roll)
-            window_data[student_id]["blink"] += blink
-            window_data[student_id]["mouth"] += mouth
-            window_data[student_id]["mobile"] += mobile_detected
-            window_data[student_id]["frames"] += 1
+            # ===== NEW: Dead-zone filter =====
+            if abs(yaw) < DEAD_ZONE:
+                yaw = 0
+            if abs(pitch) < DEAD_ZONE:
+                pitch = 0
+            if abs(roll) < DEAD_ZONE:
+                roll = 0
 
-            # ================= DASHBOARD DATA =================
+            blink_rate_live = blink / 30.0
+
+            probability, risk = compute_probability(
+                student_id,
+                yaw,
+                pitch,
+                blink_rate_live,
+                mobile_detected,
+                mouth
+            )
 
             latest_pose[object_id] = {
                 "name": name,
-                "reg_no": reg_no,
+                "reg_no": student_id,
                 "yaw": round(float(yaw), 2),
                 "pitch": round(float(pitch), 2),
                 "roll": round(float(roll), 2),
                 "blink": blink,
                 "mouth": mouth,
-                "mobile": mobile_detected
+                "mobile": mobile_detected,
+                "probability": probability,
+                "risk": risk
             }
-
-            # Draw label
-            label = f"ID {object_id} | {name} | {reg_no}"
-
-            font = cv2.FONT_HERSHEY_SIMPLEX
-            font_scale = 0.7
-            thickness = 2
-
-            (text_width, text_height), _ = cv2.getTextSize(
-                label, font, font_scale, thickness
-            )
-
-            cv2.rectangle(frame,
-                          (left, top - text_height - 10),
-                          (left + text_width + 6, top),
-                          (0, 0, 0), -1)
-
-            cv2.putText(frame,
-                        label,
-                        (left + 3, top - 5),
-                        font,
-                        font_scale,
-                        (255, 255, 255),
-                        thickness,
-                        cv2.LINE_AA)
 
             cv2.rectangle(frame,
                           (left, top),
                           (right, bottom),
                           (0, 255, 0), 2)
 
-        # ================= WINDOW FLUSH =================
+            cv2.putText(frame,
+                        f"ID {object_id} | {name} | {student_id}",
+                        (left, top - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.7,
+                        (255, 255, 255), 2)
 
-        if time.time() - window_start >= WINDOW_DURATION:
-
-            for student_id, data in window_data.items():
-
-                if data["frames"] == 0:
-                    continue
-
-                mean_yaw = np.mean(data["yaw"])
-                mean_pitch = np.mean(data["pitch"])
-                mean_roll = np.mean(data["roll"])
-
-                blink_rate = data["blink"] / WINDOW_DURATION
-                mouth_ratio = data["mouth"] / data["frames"]
-                mobile_ratio = data["mobile"] / data["frames"]
-
-                log_behavior(
-                    student_id,
-                    mean_yaw,
-                    mean_pitch,
-                    mean_roll,
-                    blink_rate,
-                    mouth_ratio,
-                    mobile_ratio
-                )
-
-            window_data.clear()
-            window_start = time.time()
-
-        ret, buffer = cv2.imencode(
-            ".jpg", frame,
-            [int(cv2.IMWRITE_JPEG_QUALITY), 50]
-        )
+        ret, buffer = cv2.imencode(".jpg", frame)
 
         yield (b"--frame\r\n"
                b"Content-Type: image/jpeg\r\n\r\n" +
                buffer.tobytes() +
                b"\r\n")
-
 
 # ================= ROUTES =================
 
@@ -257,14 +237,12 @@ def home():
     with open("exam_dashboard.html", "r", encoding="utf-8") as f:
         return f.read()
 
-
 @app.get("/video_feed")
 def video_feed():
     return StreamingResponse(
         generate_frames(),
         media_type="multipart/x-mixed-replace; boundary=frame"
     )
-
 
 @app.get("/pose")
 def get_pose():

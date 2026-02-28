@@ -173,14 +173,21 @@ function updateStudent(id, data) {
 
     const student = students[id];
 
-    const yaw = Number(data.yaw || 0);
-    const pitch = Number(data.pitch || 0);
-    const roll = Number(data.roll || 0);
-    const blink = Number(data.blink || 0);
-    const mouth = Number(data.mouth || 0);
-    const mobile = Number(data.mobile || 0);
-    const probability = Number(data.probability || 0);
-    const risk = data.risk || "Normal";
+    const yaw = Number(data.yaw ?? 0);
+    const pitch = Number(data.pitch ?? 0);
+    const roll = Number(data.roll ?? 0);
+    const blink = Number(data.blink ?? 0);
+    const mouth = Number(data.mouth ?? 0);
+
+    // FIXED MOBILE CHECK
+    const mobile = data.mobile == 1 ? 1 : 0;
+
+    // FIXED PROBABILITY CHECK
+    const probability = (data.probability !== undefined && !isNaN(data.probability))
+        ? Number(data.probability)
+        : 0;
+
+    const risk = data.risk ?? "Normal";
 
     /* GRAPH */
     student.headChart.data.labels.push("");
@@ -199,10 +206,11 @@ function updateStudent(id, data) {
     document.getElementById(`pitch-${id}`).innerText = pitch.toFixed(2);
     document.getElementById(`roll-${id}`).innerText = roll.toFixed(2);
 
-    document.getElementById(`blink-${id}`).innerText = "Blink Count: " + blink;
+    document.getElementById(`blink-${id}`).innerText =
+        "Blink Count: " + blink;
 
-    const mouthEl = document.getElementById(`mouth-${id}`);
-    mouthEl.innerText = mouth === 1 ? "Open" : "Closed";
+    document.getElementById(`mouth-${id}`).innerText =
+        mouth === 1 ? "Open" : "Closed";
 
     const mobileEl = document.getElementById(`mobile-${id}`);
     if (mobile === 1) {
