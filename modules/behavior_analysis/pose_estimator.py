@@ -4,74 +4,171 @@ import mediapipe as mp
 
 
 class HeadPoseEstimator:
-    def __init__(self):
-        self.mp_face_mesh = mp.solutions.face_mesh
 
+    def __init__(self):
+
+        self.mp_face_mesh = mp.solutions.face_mesh
         self.face_mesh = self.mp_face_mesh.FaceMesh(
             static_image_mode=False,
             max_num_faces=1,
             refine_landmarks=True,
-            min_detection_confidence=0.5,
-            min_tracking_confidence=0.5
+            min_detection_confidence=0.6,
+            min_tracking_confidence=0.6
         )
 
-    def estimate(self, frame):
+        self.blink_counter = 0
+        self.eye_closed_frames = 0
 
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        results = self.face_mesh.process(rgb_frame)
+        self.prev_yaw = 0
+        self.prev_pitch = 0
+        self.prev_roll = 0
 
-        if not results.multi_face_landmarks:
-            return 0.0, 0.0, 0.0
+    # ================= EAR =================
+    def calculate_EAR(self, landmarks, eye_points, w, h):
 
-        face_landmarks = results.multi_face_landmarks[0]
+        pts = []
+        for p in eye_points:
+            pts.append(np.array([
+                landmarks[p].x * w,
+                landmarks[p].y * h
+            ]))
 
-        img_h, img_w, _ = frame.shape
+        vertical1 = np.linalg.norm(pts[1] - pts[5])
+        vertical2 = np.linalg.norm(pts[2] - pts[4])
+        horizontal = np.linalg.norm(pts[0] - pts[3])
 
-        # --- SolvePnP for Yaw & Pitch ---
-        landmark_ids = [33, 263, 1, 61, 291, 199]
+        if horizontal == 0:
+            return 0
 
-        face_2d = []
-        face_3d = []
+        return (vertical1 + vertical2) / (2.0 * horizontal)
 
-        for idx in landmark_ids:
-            lm = face_landmarks.landmark[idx]
-            x, y = int(lm.x * img_w), int(lm.y * img_h)
+    # ================= MAR =================
+    def calculate_MAR(self, landmarks, w, h):
 
-            face_2d.append([x, y])
-            face_3d.append([x, y, lm.z])
-
-        face_2d = np.array(face_2d, dtype=np.float64)
-        face_3d = np.array(face_3d, dtype=np.float64)
-
-        focal_length = img_w
-        cam_matrix = np.array([
-            [focal_length, 0, img_w / 2],
-            [0, focal_length, img_h / 2],
-            [0, 0, 1]
+        top = np.array([
+            landmarks[13].x * w,
+            landmarks[13].y * h
         ])
 
-        dist_matrix = np.zeros((4, 1), dtype=np.float64)
+        bottom = np.array([
+            landmarks[14].x * w,
+            landmarks[14].y * h
+        ])
 
-        success, rot_vec, trans_vec = cv2.solvePnP(
-            face_3d,
-            face_2d,
-            cam_matrix,
-            dist_matrix
+        return np.linalg.norm(top - bottom)
+
+    # ================= MAIN =================
+    def estimate(self, frame):
+
+        h, w, _ = frame.shape
+
+        # Slight brightness stabilization
+        frame = cv2.convertScaleAbs(frame, alpha=1.05, beta=-5)
+
+        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        results = self.face_mesh.process(rgb)
+
+        if not results.multi_face_landmarks:
+            return 0, 0, 0, self.blink_counter, 0
+
+        landmarks = results.multi_face_landmarks[0].landmark
+
+        # ================= HEAD POSE =================
+
+        image_points = np.array([
+            (landmarks[1].x * w, landmarks[1].y * h),
+            (landmarks[152].x * w, landmarks[152].y * h),
+            (landmarks[33].x * w, landmarks[33].y * h),
+            (landmarks[263].x * w, landmarks[263].y * h),
+            (landmarks[61].x * w, landmarks[61].y * h),
+            (landmarks[291].x * w, landmarks[291].y * h)
+        ], dtype="double")
+
+        model_points = np.array([
+            (0.0, 0.0, 0.0),
+            (0.0, -63.6, -12.5),
+            (-43.3, 32.7, -26.0),
+            (43.3, 32.7, -26.0),
+            (-28.9, -28.9, -24.1),
+            (28.9, -28.9, -24.1)
+        ])
+
+        focal_length = w
+        center = (w / 2, h / 2)
+
+        camera_matrix = np.array([
+            [focal_length, 0, center[0]],
+            [0, focal_length, center[1]],
+            [0, 0, 1]
+        ], dtype="double")
+
+        dist_coeffs = np.zeros((4, 1))
+
+        success, rotation_vector, translation_vector = cv2.solvePnP(
+            model_points,
+            image_points,
+            camera_matrix,
+            dist_coeffs
         )
 
-        rmat, _ = cv2.Rodrigues(rot_vec)
+        rmat, _ = cv2.Rodrigues(rotation_vector)
         angles, _, _, _, _, _ = cv2.RQDecomp3x3(rmat)
 
-        pitch = angles[0] * 360
-        yaw = angles[1] * 360
+        pitch = angles[0]
+        yaw = angles[1]
+        roll = angles[2]
 
-        # --- 🔥 Accurate Roll Using Eye Alignment ---
-        left_eye = face_landmarks.landmark[33]
-        right_eye = face_landmarks.landmark[263]
+        # Clamp angles
+        yaw = max(min(yaw, 40), -40)
+        pitch = max(min(pitch, 40), -40)
+        roll = max(min(roll, 40), -40)
 
-        x1, y1 = left_eye.x * img_w, left_eye.y * img_h
-        x2, y2 = right_eye.x * img_w, right_eye.y * img_h
+        # Smooth angles
+        yaw = 0.7 * self.prev_yaw + 0.3 * yaw
+        pitch = 0.7 * self.prev_pitch + 0.3 * pitch
+        roll = 0.7 * self.prev_roll + 0.3 * roll
 
-        roll = np.degrees(np.arctan2(y2 - y1, x2 - x1))
+        self.prev_yaw = yaw
+        self.prev_pitch = pitch
+        self.prev_roll = roll
 
-        return yaw, pitch, roll
+        # ================= BLINK (Sensitive) =================
+
+        left_eye = [33, 160, 158, 133, 153, 144]
+        right_eye = [362, 385, 387, 263, 373, 380]
+
+        left_EAR = self.calculate_EAR(landmarks, left_eye, w, h)
+        right_EAR = self.calculate_EAR(landmarks, right_eye, w, h)
+
+        ear = (left_EAR + right_EAR) / 2.0
+
+        EAR_THRESHOLD = 0.28
+        CONSEC_FRAMES = 1
+
+        if ear < EAR_THRESHOLD:
+            self.eye_closed_frames += 1
+        else:
+            if self.eye_closed_frames >= CONSEC_FRAMES:
+                self.blink_counter += 1
+            self.eye_closed_frames = 0
+
+        blink_count = self.blink_counter
+
+        # ================= MOUTH (Talking Sensitive) =================
+
+        mar = self.calculate_MAR(landmarks, w, h)
+
+        face_height = abs((landmarks[152].y - landmarks[10].y) * h)
+
+        if face_height == 0:
+            mouth_open = 0
+        else:
+            normalized_mar = mar / face_height
+
+            # More sensitive threshold for normal talking
+            if normalized_mar > 0.045:
+                mouth_open = 1
+            else:
+                mouth_open = 0
+
+        return yaw, pitch, roll, blink_count, mouth_open

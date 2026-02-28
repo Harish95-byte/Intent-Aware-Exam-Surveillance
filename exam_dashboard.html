@@ -9,9 +9,9 @@
 <body class="bg-gradient-to-br from-slate-900 to-slate-800 text-white min-h-screen">
 
 <!-- HEADER -->
-<div class="bg-slate-900/70 backdrop-blur-md p-4 flex justify-between items-center shadow-lg border-b border-slate-700">
+<div class="bg-slate-900/70 p-4 flex justify-between items-center border-b border-slate-700">
     <div>
-        <h1 class="text-2xl font-bold text-blue-400 tracking-wide">
+        <h1 class="text-2xl font-bold text-blue-400">
             AI Examination Surveillance System
         </h1>
         <p class="text-sm text-slate-400">
@@ -19,217 +19,220 @@
         </p>
     </div>
 
-    <div class="flex items-center gap-6">
-        <div class="text-right">
-            <p class="text-sm text-slate-400">Current Time</p>
-            <p id="clock" class="font-semibold text-lg"></p>
-        </div>
-
-        <button class="bg-red-500 hover:bg-red-600 transition px-5 py-2 rounded-lg shadow-md">
-            Logout
-        </button>
+    <div class="text-right">
+        <p class="text-sm text-slate-400">Current Time</p>
+        <p id="clock" class="font-semibold text-lg text-green-400"></p>
     </div>
 </div>
 
-<!-- LIVE VIDEO SECTION -->
+<!-- LIVE VIDEO -->
 <div class="p-8">
-    <div class="bg-slate-800/60 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-slate-700">
-
+    <div class="bg-slate-800 rounded-2xl p-6 border border-slate-700">
         <div class="flex justify-between items-center mb-4">
-            <h2 class="text-blue-400 font-semibold text-xl">
+            <h2 class="text-blue-400 text-xl font-semibold">
                 Live Video Stream
             </h2>
-
             <span id="videoStatus"
-                class="bg-gray-500/20 text-gray-400 px-4 py-1 text-sm rounded-full">
+                class="bg-yellow-500/20 text-yellow-400 px-4 py-1 rounded-full text-sm">
                 CONNECTING...
             </span>
         </div>
 
-        <div class="bg-black h-[500px] rounded-xl overflow-hidden">
+        <div class="bg-black rounded-xl overflow-hidden flex justify-center">
             <img id="videoStream"
-                 src="/video"
-                 class="w-full h-full object-cover"
-                 onload="setConnected()"
-                 onerror="setDisconnected()" />
-        </div>
-
-    </div>
-</div>
-
-<!-- BEHAVIORAL ANALYTICS -->
-<div class="px-8 pb-8">
-    <div class="bg-slate-800/60 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-slate-700">
-
-        <h2 class="text-blue-400 font-semibold text-xl mb-6">
-            Behavioral Analytics Panel
-        </h2>
-
-        <div class="grid grid-cols-2 gap-6">
-            <div class="bg-slate-700/60 rounded-xl p-4">
-                <canvas id="eyeChart"></canvas>
-            </div>
-            <div class="bg-slate-700/60 rounded-xl p-4">
-                <canvas id="headChart"></canvas>
-            </div>
-            <div class="bg-slate-700/60 rounded-xl p-4">
-                <canvas id="deviationChart"></canvas>
-            </div>
-            <div class="bg-slate-700/60 rounded-xl p-4">
-                <canvas id="temporalChart"></canvas>
-            </div>
-        </div>
-
-    </div>
-</div>
-
-<!-- ALERTS -->
-<div class="px-8 pb-8">
-    <div class="bg-slate-800/60 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-slate-700">
-
-        <div class="flex justify-between items-center mb-4">
-            <h2 class="text-red-400 font-semibold text-lg">
-                Alerts & Events Panel
-            </h2>
-
-            <span id="monitorStatus"
-                class="bg-gray-500/20 text-gray-400 px-3 py-1 text-xs rounded-full">
-                WAITING FOR DATA
-            </span>
-        </div>
-
-        <table class="w-full text-left">
-            <thead>
-                <tr class="border-b border-slate-600 text-slate-400 text-sm">
-                    <th class="p-3">Time</th>
-                    <th class="p-3">Event</th>
-                    <th class="p-3">Risk Level</th>
-                </tr>
-            </thead>
-            <tbody id="alertsBody">
-                <tr>
-                    <td class="p-3">--</td>
-                    <td class="p-3">Monitoring Not Started</td>
-                    <td class="p-3 text-gray-400">No Data</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<!-- STUDENT INFO -->
-<div class="px-8 pb-10">
-    <div class="bg-slate-800/60 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-slate-700">
-
-        <h2 class="text-green-400 font-semibold text-lg mb-6">
-            Student Information
-        </h2>
-
-        <div class="grid grid-cols-3 gap-6 text-slate-300">
-            <div>
-                <p class="text-slate-400 text-sm">Student Name</p>
-                <p id="studentName" class="font-semibold">---</p>
-            </div>
-            <div>
-                <p class="text-slate-400 text-sm">Roll Number</p>
-                <p id="studentRoll" class="font-semibold">---</p>
-            </div>
-            <div>
-                <p class="text-slate-400 text-sm">Exam Name</p>
-                <p id="examName" class="font-semibold">---</p>
-            </div>
-            <div>
-                <p class="text-slate-400 text-sm">Session Duration</p>
-                <p id="examDuration" class="font-semibold">---</p>
-            </div>
-            <div>
-                <p class="text-slate-400 text-sm">Current Status</p>
-                <p id="studentStatus" class="font-semibold text-gray-400">
-                    Monitoring
-                </p>
-            </div>
+                src="/video_feed"
+                width="640"
+                height="480"
+                class="rounded-xl"
+                onload="setConnected()"
+                onerror="setDisconnected()" />
         </div>
     </div>
 </div>
+
+<!-- STUDENT ANALYTICS -->
+<div id="studentsContainer" class="px-8 pb-10 space-y-6"></div>
 
 <script>
+
+/* ================= CLOCK ================= */
+
+function updateClock() {
+    const now = new Date();
+    document.getElementById("clock").innerText = now.toLocaleString();
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+/* ================= VIDEO STATUS ================= */
+
+function setConnected() {
+    const status = document.getElementById("videoStatus");
+    status.innerText = "LIVE";
+    status.className = "bg-green-500/20 text-green-400 px-4 py-1 rounded-full text-sm";
+}
+
+function setDisconnected() {
+    const status = document.getElementById("videoStatus");
+    status.innerText = "DISCONNECTED";
+    status.className = "bg-red-500/20 text-red-400 px-4 py-1 rounded-full text-sm";
+}
+
+/* ================= STUDENT LOGIC ================= */
 
 const students = {};
 
 function createStudentCard(id, name, reg_no) {
 
-    const container = document.querySelector(".px-8.pb-8 + .px-8.pb-8") || document.body;
+    const container = document.getElementById("studentsContainer");
 
     const card = document.createElement("div");
-    card.className =
-        "bg-slate-800/60 backdrop-blur-md rounded-2xl p-6 shadow-xl border border-slate-700 mt-6";
-
-    card.id = "student-" + id;
+    card.id = `card-${id}`;
+    card.className = "bg-slate-800 rounded-2xl p-6 border border-slate-700";
 
     card.innerHTML = `
         <h2 class="text-green-400 font-semibold text-lg mb-4">
             ID ${id} | ${name} | ${reg_no}
         </h2>
 
-        <div class="text-blue-300 mb-4" id="values-${id}">
-            Yaw: 0 | Pitch: 0 | Roll: 0
-        </div>
+        <div class="grid grid-cols-6 gap-6">
 
-        <div class="h-[300px]">
-            <canvas id="chart-${id}"></canvas>
+            <div class="bg-slate-700 p-4 rounded-xl">
+                <h3 class="text-blue-300 mb-2">Head Movement</h3>
+                <canvas id="headChart-${id}"></canvas>
+            </div>
+
+            <div class="bg-slate-700 p-4 rounded-xl">
+                <h3 class="text-cyan-300 mb-2">Head Angles</h3>
+                <p>Yaw: <span id="yaw-${id}" class="text-red-400 font-semibold">0</span>°</p>
+                <p>Pitch: <span id="pitch-${id}" class="text-blue-400 font-semibold">0</span>°</p>
+                <p>Roll: <span id="roll-${id}" class="text-green-400 font-semibold">0</span>°</p>
+            </div>
+
+            <div class="bg-slate-700 p-4 rounded-xl">
+                <h3 class="text-yellow-300 mb-2">Eye Blink</h3>
+                <p id="blink-${id}" class="text-xl font-semibold text-yellow-400">
+                    Blink Count: 0
+                </p>
+            </div>
+
+            <div class="bg-slate-700 p-4 rounded-xl">
+                <h3 class="text-purple-300 mb-2">Mouth Activity</h3>
+                <p id="mouth-${id}" class="text-xl font-semibold text-purple-400">
+                    Closed
+                </p>
+            </div>
+
+            <div class="bg-slate-700 p-4 rounded-xl">
+                <h3 class="text-red-300 mb-2">Mobile Phone</h3>
+                <p id="mobile-${id}" class="text-xl font-semibold text-green-400">
+                    Not Present
+                </p>
+            </div>
+
+            <div class="bg-slate-700 p-4 rounded-xl">
+                <h3 class="text-orange-300 mb-2">Suspicion Score</h3>
+                <p id="prob-${id}" class="text-2xl font-bold text-green-400">0%</p>
+                <p id="risk-${id}" class="text-lg font-semibold text-green-400">Normal</p>
+            </div>
+
         </div>
     `;
 
-    document.body.appendChild(card);
+    container.appendChild(card);
 
-    const chart = new Chart(
-        document.getElementById(`chart-${id}`),
-        {
+    students[id] = {
+        headChart: new Chart(document.getElementById(`headChart-${id}`), {
             type: "line",
             data: {
                 labels: [],
-                datasets: [{
-                    label: "Yaw Angle",
-                    data: [],
-                    borderColor: "#3b82f6",
-                    backgroundColor: "rgba(59,130,246,0.1)",
-                    tension: 0.4
-                }]
+                datasets: [
+                    { label: "Yaw", data: [], borderColor: "red", tension: 0.3 },
+                    { label: "Pitch", data: [], borderColor: "blue", tension: 0.3 },
+                    { label: "Roll", data: [], borderColor: "green", tension: 0.3 }
+                ]
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false,
                 animation: false,
-                scales: {
-                    x: { display: false },
-                    y: {
-                        min: -90,
-                        max: 90,
-                        ticks: { color: "gray" }
-                    }
-                },
                 plugins: {
                     legend: { labels: { color: "white" } }
+                },
+                scales: {
+                    y: { min: -40, max: 40, ticks: { color: "white" } },
+                    x: { ticks: { display: false } }
                 }
             }
-        }
-    );
-
-    students[id] = chart;
+        })
+    };
 }
 
-function updateChart(chart, value) {
+function updateStudent(id, data) {
 
-    chart.data.labels.push("");
-    chart.data.datasets[0].data.push(Number(value));
+    if (!students[id]) return;
 
-    if (chart.data.labels.length > 20) {
-        chart.data.labels.shift();
-        chart.data.datasets[0].data.shift();
+    const student = students[id];
+
+    const yaw = Number(data.yaw || 0);
+    const pitch = Number(data.pitch || 0);
+    const roll = Number(data.roll || 0);
+    const blink = Number(data.blink || 0);
+    const mouth = Number(data.mouth || 0);
+    const mobile = Number(data.mobile || 0);
+    const probability = Number(data.probability || 0);
+    const risk = data.risk || "Normal";
+
+    /* GRAPH */
+    student.headChart.data.labels.push("");
+    student.headChart.data.datasets[0].data.push(yaw);
+    student.headChart.data.datasets[1].data.push(pitch);
+    student.headChart.data.datasets[2].data.push(roll);
+
+    if (student.headChart.data.labels.length > 15) {
+        student.headChart.data.labels.shift();
+        student.headChart.data.datasets.forEach(ds => ds.data.shift());
     }
 
-    chart.update();
+    student.headChart.update("none");
+
+    document.getElementById(`yaw-${id}`).innerText = yaw.toFixed(2);
+    document.getElementById(`pitch-${id}`).innerText = pitch.toFixed(2);
+    document.getElementById(`roll-${id}`).innerText = roll.toFixed(2);
+
+    document.getElementById(`blink-${id}`).innerText = "Blink Count: " + blink;
+
+    const mouthEl = document.getElementById(`mouth-${id}`);
+    mouthEl.innerText = mouth === 1 ? "Open" : "Closed";
+
+    const mobileEl = document.getElementById(`mobile-${id}`);
+    if (mobile === 1) {
+        mobileEl.innerText = "Present ⚠";
+        mobileEl.className = "text-xl font-semibold text-red-500";
+    } else {
+        mobileEl.innerText = "Not Present";
+        mobileEl.className = "text-xl font-semibold text-green-400";
+    }
+
+    const probEl = document.getElementById(`prob-${id}`);
+    const riskEl = document.getElementById(`risk-${id}`);
+
+    const percentage = Math.round(probability * 100);
+    probEl.innerText = percentage + "%";
+    riskEl.innerText = risk;
+
+    if (risk === "High") {
+        probEl.className = "text-2xl font-bold text-red-500";
+        riskEl.className = "text-lg font-semibold text-red-500";
+    } else if (risk === "Moderate") {
+        probEl.className = "text-2xl font-bold text-yellow-400";
+        riskEl.className = "text-lg font-semibold text-yellow-400";
+    } else {
+        probEl.className = "text-2xl font-bold text-green-400";
+        riskEl.className = "text-lg font-semibold text-green-400";
+    }
 }
+
+/* FETCH */
 
 async function fetchPose() {
     try {
@@ -237,27 +240,18 @@ async function fetchPose() {
         const data = await response.json();
 
         for (const id in data) {
-
-            const student = data[id];
-
             if (!students[id]) {
-                createStudentCard(id, student.name, student.reg_no);
+                createStudentCard(id, data[id].name, data[id].reg_no);
             }
-
-            document.getElementById(`values-${id}`).innerText =
-                `Yaw: ${student.yaw.toFixed(2)} | ` +
-                `Pitch: ${student.pitch.toFixed(2)} | ` +
-                `Roll: ${student.roll.toFixed(2)}`;
-
-            updateChart(students[id], student.yaw);
+            updateStudent(id, data[id]);
         }
 
     } catch (error) {
-        console.log("Error fetching pose:", error);
+        console.log("Pose API Error:", error);
     }
 }
 
-setInterval(fetchPose, 150);
+setInterval(fetchPose, 1500);
 
 </script>
 
